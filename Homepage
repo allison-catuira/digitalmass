@@ -1,0 +1,260 @@
+/**
+ * Digital Mass — Scroll Animations & Interactions
+ * Drop this script at the bottom of <body> (or enqueue in WordPress/your CMS)
+ * No dependencies required — pure vanilla JS + CSS.
+ */
+
+(function () {
+  /* ─── 1. INJECT STYLES ─────────────────────────────────────────── */
+  const css = `
+    /* Base reveal state */
+    .dm-reveal {
+      opacity: 0;
+      transform: translateY(32px);
+      transition: opacity 0.7s cubic-bezier(.22,1,.36,1),
+                  transform 0.7s cubic-bezier(.22,1,.36,1);
+    }
+    .dm-reveal.dm-visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Stagger delays for children */
+    .dm-stagger > * { opacity: 0; transform: translateY(24px);
+      transition: opacity 0.6s cubic-bezier(.22,1,.36,1),
+                  transform 0.6s cubic-bezier(.22,1,.36,1); }
+    .dm-stagger.dm-visible > *:nth-child(1) { transition-delay: 0.05s; }
+    .dm-stagger.dm-visible > *:nth-child(2) { transition-delay: 0.15s; }
+    .dm-stagger.dm-visible > *:nth-child(3) { transition-delay: 0.25s; }
+    .dm-stagger.dm-visible > *:nth-child(4) { transition-delay: 0.35s; }
+    .dm-stagger.dm-visible > *:nth-child(5) { transition-delay: 0.45s; }
+    .dm-stagger.dm-visible > *:nth-child(6) { transition-delay: 0.55s; }
+    .dm-stagger.dm-visible > *:nth-child(7) { transition-delay: 0.65s; }
+    .dm-stagger.dm-visible > * { opacity: 1; transform: translateY(0); }
+
+    /* Navbar scroll shrink */
+    .dm-nav-scrolled {
+      backdrop-filter: blur(12px) !important;
+      background: rgba(5, 18, 18, 0.92) !important;
+      box-shadow: 0 2px 24px rgba(0,0,0,0.4) !important;
+      padding-top: 8px !important;
+      padding-bottom: 8px !important;
+      transition: all 0.4s ease !important;
+    }
+
+    /* Stat counter */
+    .dm-stat-num {
+      display: inline-block;
+      transition: color 0.3s;
+    }
+
+    /* Button glow on hover */
+    .dm-glow:hover {
+      box-shadow: 0 0 18px 4px rgba(0, 230, 140, 0.45) !important;
+      transition: box-shadow 0.3s ease !important;
+    }
+
+    /* Fade-in from left for alternating elements */
+    .dm-reveal-left {
+      opacity: 0;
+      transform: translateX(-32px);
+      transition: opacity 0.7s cubic-bezier(.22,1,.36,1),
+                  transform 0.7s cubic-bezier(.22,1,.36,1);
+    }
+    .dm-reveal-left.dm-visible {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    /* Fade-in from right */
+    .dm-reveal-right {
+      opacity: 0;
+      transform: translateX(32px);
+      transition: opacity 0.7s cubic-bezier(.22,1,.36,1),
+                  transform 0.7s cubic-bezier(.22,1,.36,1);
+    }
+    .dm-reveal-right.dm-visible {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    /* Card hover lift */
+    .dm-card-hover {
+      transition: transform 0.3s cubic-bezier(.22,1,.36,1),
+                  box-shadow 0.3s ease !important;
+    }
+    .dm-card-hover:hover {
+      transform: translateY(-6px) !important;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.35) !important;
+    }
+  `;
+  const style = document.createElement('style');
+  style.textContent = css;
+  document.head.appendChild(style);
+
+  /* ─── 2. NAVBAR SCROLL EFFECT ───────────────────────────────────── */
+  const nav = document.querySelector('header, nav, [class*="header"], [class*="nav"]');
+  if (nav) {
+    window.addEventListener('scroll', () => {
+      nav.classList.toggle('dm-nav-scrolled', window.scrollY > 60);
+    }, { passive: true });
+  }
+
+  /* ─── 3. INTERSECTION OBSERVER SETUP ───────────────────────────── */
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('dm-visible');
+        // Trigger stat counters when they appear
+        if (entry.target.hasAttribute('data-count-up')) {
+          animateCount(entry.target);
+        }
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.12, rootMargin: '0px 0px -48px 0px' });
+
+  /* ─── 4. TAG ELEMENTS FOR ANIMATION ────────────────────────────── */
+  function tagElements() {
+    // Generic section headings — reveal from below
+    document.querySelectorAll('h1, h2, h3, h4').forEach(el => {
+      if (!el.closest('[class*="hero"]') && !el.closest('[class*="banner"]')) {
+        el.classList.add('dm-reveal');
+        observer.observe(el);
+      }
+    });
+
+    // Paragraphs and body text blocks
+    document.querySelectorAll('p').forEach(el => {
+      el.classList.add('dm-reveal');
+      observer.observe(el);
+    });
+
+    // Cards / service tiles — stagger parent containers
+    const cardContainers = document.querySelectorAll(
+      '[class*="grid"], [class*="cards"], [class*="services"], [class*="features"]'
+    );
+    cardContainers.forEach(container => {
+      container.classList.add('dm-stagger');
+      observer.observe(container);
+      // Add hover lift to direct card children
+      container.querySelectorAll(':scope > *, [class*="card"], [class*="tile"], article').forEach(card => {
+        card.classList.add('dm-card-hover');
+      });
+    });
+
+    // Testimonials — slide from left/right alternating
+    document.querySelectorAll('[class*="testimonial"], [class*="quote"], blockquote').forEach((el, i) => {
+      el.classList.add(i % 2 === 0 ? 'dm-reveal-left' : 'dm-reveal-right');
+      observer.observe(el);
+    });
+
+    // Blog / insight article cards
+    document.querySelectorAll('article, [class*="post"], [class*="insight"], [class*="blog"]').forEach((el, i) => {
+      el.style.transitionDelay = `${i * 0.1}s`;
+      el.classList.add('dm-reveal');
+      el.classList.add('dm-card-hover');
+      observer.observe(el);
+    });
+
+    // Case study / stat blocks — count-up numbers
+    document.querySelectorAll('[class*="stat"], [class*="metric"], [class*="number"], [class*="count"]').forEach(el => {
+      el.classList.add('dm-reveal');
+      observer.observe(el);
+    });
+
+    // Find and tag numeric stat elements for count-up
+    tagStatsForCountUp();
+
+    // Buttons — glow
+    document.querySelectorAll('a[class*="btn"], a[class*="button"], button[class*="btn"], .wp-block-button__link').forEach(el => {
+      el.classList.add('dm-glow');
+    });
+
+    // Images — fade in
+    document.querySelectorAll('img:not([class*="logo"]):not([class*="icon"])').forEach(el => {
+      el.classList.add('dm-reveal');
+      observer.observe(el);
+    });
+  }
+
+  /* ─── 5. COUNT-UP ANIMATION ─────────────────────────────────────── */
+  function tagStatsForCountUp() {
+    // Look for elements containing only a number (with optional prefix/suffix like $, %, x)
+    const allEls = document.querySelectorAll(
+      '[class*="stat"] *, [class*="metric"] *, [class*="number"] *, [class*="result"] *'
+    );
+    allEls.forEach(el => {
+      const text = el.textContent.trim();
+      const match = text.match(/^([^\d]*)(\d+\.?\d*)([^\d]*)$/);
+      if (match && el.children.length === 0) {
+        const prefix = match[1], num = parseFloat(match[2]), suffix = match[3];
+        el.dataset.countPrefix = prefix;
+        el.dataset.countTarget = num;
+        el.dataset.countSuffix = suffix;
+        el.setAttribute('data-count-up', '');
+        el.classList.add('dm-stat-num');
+        el.textContent = prefix + '0' + suffix;
+        observer.observe(el);
+      }
+    });
+  }
+
+  function animateCount(el) {
+    const target = parseFloat(el.dataset.countTarget);
+    const prefix = el.dataset.countPrefix || '';
+    const suffix = el.dataset.countSuffix || '';
+    const duration = 1800;
+    const start = performance.now();
+    const isDecimal = String(target).includes('.');
+    const decimals = isDecimal ? String(target).split('.')[1].length : 0;
+
+    function step(now) {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      // Ease out
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const current = eased * target;
+      el.textContent = prefix + (isDecimal ? current.toFixed(decimals) : Math.floor(current)) + suffix;
+      if (progress < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  /* ─── 6. HERO ENTRANCE ANIMATION ───────────────────────────────── */
+  function heroEntrance() {
+    const heroChildren = document.querySelectorAll(
+      '[class*="hero"] h1, [class*="hero"] h2, [class*="hero"] p, [class*="hero"] a, [class*="hero"] .badge, [class*="hero"] [class*="tag"]'
+    );
+    heroChildren.forEach((el, i) => {
+      el.style.opacity = '0';
+      el.style.transform = 'translateY(28px)';
+      el.style.transition = `opacity 0.8s cubic-bezier(.22,1,.36,1) ${0.1 + i * 0.12}s, transform 0.8s cubic-bezier(.22,1,.36,1) ${0.1 + i * 0.12}s`;
+      // Trigger after a short delay so CSS is applied first
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        el.style.opacity = '1';
+        el.style.transform = 'translateY(0)';
+      }));
+    });
+  }
+
+  /* ─── 7. SMOOTH ANCHOR SCROLL ───────────────────────────────────── */
+  document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', function (e) {
+      const target = document.querySelector(this.getAttribute('href'));
+      if (target) {
+        e.preventDefault();
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  });
+
+  /* ─── 8. INIT ───────────────────────────────────────────────────── */
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => { heroEntrance(); tagElements(); });
+  } else {
+    heroEntrance();
+    tagElements();
+  }
+
+})();
