@@ -1,9 +1,3 @@
-/**
- * Digital Mass — Scroll Animations & Interactions
- * Drop this script at the bottom of <body> (or enqueue in WordPress/your CMS)
- * No dependencies required — pure vanilla JS + CSS.
- */
-
 (function () {
   /* ─── 1. INJECT STYLES ─────────────────────────────────────────── */
   const css = `
